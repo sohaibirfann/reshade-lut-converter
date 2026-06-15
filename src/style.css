@@ -1,0 +1,171 @@
+:root {
+  --bg: #14161a;
+  --panel: #1d2128;
+  --line: #2c313b;
+  --text: #e6e8ec;
+  --muted: #9aa3b2;
+  --accent: #5b9dff;
+  --accent-ink: #0b1220;
+  --danger: #ff6b6b;
+  --warn: #ffc861;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.app {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+.head h1 {
+  margin: 0 0 0.4rem;
+  font-size: clamp(1.4rem, 4vw, 2rem);
+}
+
+.sub {
+  margin: 0;
+  color: var(--muted);
+  max-width: 56ch;
+}
+
+code {
+  background: var(--panel);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.drop {
+  margin-top: 2rem;
+  border: 2px dashed var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  padding: 3rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.drop:hover,
+.drop:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.drop.dragging {
+  border-color: var(--accent);
+  background: #222a3a;
+}
+
+.drop-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.drop-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.message {
+  margin-top: 1.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.message.error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.message.warn {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.result {
+  margin-top: 1.75rem;
+}
+
+.detected {
+  margin: 0 0 1.25rem;
+  font-weight: 600;
+}
+
+.previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+figure {
+  margin: 0;
+}
+
+figcaption {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  max-width: 256px;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #000;
+  image-rendering: pixelated;
+}
+
+.actions {
+  margin-top: 1.75rem;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.7rem 1.3rem;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button.ghost {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--text);
+}
+
+.foot {
+  margin-top: 3rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
