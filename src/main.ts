@@ -1,7 +1,7 @@
 import "./style.css";
-import { detectLayout } from "./detect";
-import { convertToCube, toCubeFilename } from "./convert";
-import { applyLut } from "./preview";
+import { detectLayout, type DetectionResult } from "./detect";
+import { convertToCube, convertHaldToCube, toCubeFilename } from "./convert";
+import { applyStrip, applyHald } from "./preview";
 import { downloadText } from "./download";
 
 function el<T extends Element>(sel: string): T {
@@ -10,20 +10,32 @@ function el<T extends Element>(sel: string): T {
   return node;
 }
 
-const drop = el<HTMLDivElement>("#drop");
-const fileInput = el<HTMLInputElement>("#file");
+const lutDrop = el<HTMLDivElement>("#lut-drop");
+const lutFile = el<HTMLInputElement>("#lut-file");
 const message = el<HTMLParagraphElement>("#message");
 const result = el<HTMLElement>("#result");
 const detected = el<HTMLParagraphElement>("#detected");
-const lutThumb = el<HTMLCanvasElement>("#lut-thumb");
+const bandsWrap = el<HTMLDivElement>("#bands-wrap");
+const bands = el<HTMLDivElement>("#bands");
 const before = el<HTMLCanvasElement>("#before");
 const after = el<HTMLCanvasElement>("#after");
+const afterLabel = el<HTMLElement>("#after-label");
+const previewDrop = el<HTMLDivElement>("#preview-drop");
+const previewFile = el<HTMLInputElement>("#preview-file");
+const previewReset = el<HTMLButtonElement>("#preview-reset");
 const downloadBtn = el<HTMLButtonElement>("#download");
 const resetBtn = el<HTMLButtonElement>("#reset");
 
-let cubeText = "";
-let outName = "lut.cube";
-let sample: ImageData | null = null;
+interface State {
+  lut: ImageData | null;
+  layout: DetectionResult | null;
+  sourceName: string;
+  band: number;
+  preview: ImageData | null;
+}
+
+const state: State = { lut: null, layout: null, sourceName: "", band: 0, preview: null };
+let sampleCache: ImageData | null = null;
 
 function showMessage(text: string, kind: "error" | "warn"): void {
   message.textContent = text;
@@ -36,23 +48,23 @@ function hideMessage(): void {
   message.textContent = "";
 }
 
-async function toImageData(source: ImageBitmapSource): Promise<ImageData> {
+async function toImageData(source: ImageBitmapSource, maxSide = Infinity): Promise<ImageData> {
   const bitmap = await createImageBitmap(source);
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const w = Math.max(1, Math.round(bitmap.width * scale));
+  const h = Math.max(1, Math.round(bitmap.height * scale));
   const canvas = document.createElement("canvas");
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) throw new Error("no 2d context");
-  ctx.drawImage(bitmap, 0, 0);
-  return ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  return ctx.getImageData(0, 0, w, h);
 }
 
 async function getSample(): Promise<ImageData> {
-  if (!sample) {
-    const res = await fetch("/sample.png");
-    sample = await toImageData(await res.blob());
-  }
-  return sample;
+  if (!sampleCache) sampleCache = await toImageData(await (await fetch("/sample.png")).blob());
+  return sampleCache;
 }
 
 function putOnCanvas(canvas: HTMLCanvasElement, img: ImageData): void {
@@ -61,22 +73,105 @@ function putOnCanvas(canvas: HTMLCanvasElement, img: ImageData): void {
   canvas.getContext("2d")?.putImageData(img, 0, 0);
 }
 
-function drawLutThumb(canvas: HTMLCanvasElement, img: ImageData): void {
-  const tmp = document.createElement("canvas");
-  putOnCanvas(tmp, img);
-  canvas.width = 256;
-  canvas.height = 48;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+function downscale(img: ImageData, maxSide: number): ImageData {
+  const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+  if (scale === 1) return img;
+  const src = document.createElement("canvas");
+  putOnCanvas(src, img);
+  const dst = document.createElement("canvas");
+  dst.width = Math.max(1, Math.round(img.width * scale));
+  dst.height = Math.max(1, Math.round(img.height * scale));
+  const ctx = dst.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return img;
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(tmp, 0, 0, canvas.width, canvas.height);
+  ctx.drawImage(src, 0, 0, dst.width, dst.height);
+  return ctx.getImageData(0, 0, dst.width, dst.height);
+}
+
+// Apply the active LUT (selected atlas band, or the whole strip/HALD) to an image.
+function applyActive(image: ImageData): ImageData {
+  const { lut, layout, band } = state;
+  const size = layout!.edgeSize!;
+  if (layout!.kind === "hald") return applyHald(image, lut!.data, size);
+  return applyStrip(image, lut!.data, lut!.width, size, band * size);
+}
+
+function cubeForActive(): { name: string; text: string } {
+  const { lut, layout, band, sourceName } = state;
+  const size = layout!.edgeSize!;
+  const title = sourceName.replace(/\.png$/i, "");
+  if (layout!.kind === "hald") {
+    return { name: toCubeFilename(sourceName), text: convertHaldToCube(lut!.data, size, { title }) };
+  }
+  if (layout!.kind === "atlas") {
+    return {
+      name: toCubeFilename(sourceName, band + 1),
+      text: convertToCube(lut!.data, lut!.width, size, { title, yOffset: band * size }),
+    };
+  }
+  return { name: toCubeFilename(sourceName), text: convertToCube(lut!.data, lut!.width, size, { title }) };
+}
+
+function describeLayout(l: DetectionResult): string {
+  const dim = `${l.edgeSize}×${l.edgeSize}×${l.edgeSize}`;
+  if (l.kind === "hald") return `Detected: HALD CLUT, ${dim}`;
+  if (l.kind === "atlas") return `Detected: MultiLUT atlas, ${l.lutCount} LUTs of ${dim}`;
+  return `Detected: ReShade strip LUT, ${dim}`;
+}
+
+function selectBand(i: number): void {
+  state.band = i;
+  [...bands.children].forEach((btn, idx) =>
+    btn.setAttribute("aria-selected", String(idx === i)),
+  );
+  afterLabel.textContent = `After — LUT ${i + 1}`;
+  putOnCanvas(after, applyActive(state.preview!));
+}
+
+function renderBands(): void {
+  const { layout, lut, preview } = state;
+  bands.replaceChildren();
+  if (!layout || layout.kind !== "atlas") {
+    bandsWrap.hidden = true;
+    return;
+  }
+  bandsWrap.hidden = false;
+  const thumb = downscale(preview!, 120);
+  for (let i = 0; i < layout.lutCount!; i++) {
+    const btn = document.createElement("button");
+    btn.className = "band";
+    btn.setAttribute("role", "option");
+    btn.setAttribute("aria-selected", String(i === state.band));
+    const canvas = document.createElement("canvas");
+    putOnCanvas(canvas, applyStrip(thumb, lut!.data, lut!.width, layout.edgeSize!, i * layout.edgeSize!));
+    const span = document.createElement("span");
+    span.textContent = `LUT ${i + 1}`;
+    btn.append(canvas, span);
+    btn.addEventListener("click", () => selectBand(i));
+    bands.appendChild(btn);
+  }
+}
+
+function renderCompare(): void {
+  putOnCanvas(before, state.preview!);
+  putOnCanvas(after, applyActive(state.preview!));
+}
+
+function render(): void {
+  detected.textContent = describeLayout(state.layout!);
+  afterLabel.textContent = state.layout!.kind === "atlas" ? `After — LUT ${state.band + 1}` : "After";
+  if (state.layout!.warning) showMessage(state.layout!.warning, "warn");
+  else hideMessage();
+  renderBands();
+  renderCompare();
+  result.hidden = false;
 }
 
 function isPng(file: File): boolean {
   return file.type === "image/png" || /\.png$/i.test(file.name);
 }
 
-async function decodeFile(file: File): Promise<ImageData | null> {
+async function decodeLut(file: File): Promise<ImageData | null> {
   if (!isPng(file)) {
     showMessage("That's not a PNG. Export your ReShade LUT as a .png and try again.", "error");
     return null;
@@ -89,71 +184,95 @@ async function decodeFile(file: File): Promise<ImageData | null> {
   }
 }
 
-async function renderPreviews(img: ImageData, size: number): Promise<void> {
-  drawLutThumb(lutThumb, img);
-  const sampleData = await getSample();
-  putOnCanvas(before, sampleData);
-  putOnCanvas(after, applyLut(sampleData, img.data, img.width, size));
-}
-
-async function handleFile(file: File): Promise<void> {
+async function loadLut(file: File): Promise<void> {
   result.hidden = true;
   hideMessage();
-
-  const img = await decodeFile(file);
+  const img = await decodeLut(file);
   if (!img) return;
 
   const layout = detectLayout(img.width, img.height);
-  if (layout.kind !== "strip") {
-    showMessage(layout.error!, "error");
+  if (layout.kind === "unknown") {
+    showMessage(`${layout.error} (your image is ${img.width}×${img.height})`, "error");
     return;
   }
 
-  const size = layout.edgeSize!;
-  outName = toCubeFilename(file.name);
-  cubeText = convertToCube(img.data, img.width, size, {
-    title: file.name.replace(/\.png$/i, ""),
-  });
-
-  detected.textContent = `Detected: ReShade strip LUT, ${size}×${size}×${size}`;
-  if (layout.warning) showMessage(layout.warning, "warn");
-
-  await renderPreviews(img, size);
-  result.hidden = false;
+  state.lut = img;
+  state.layout = layout;
+  state.sourceName = file.name;
+  state.band = 0;
+  if (!state.preview) state.preview = await getSample();
+  render();
 }
 
-drop.addEventListener("click", () => fileInput.click());
-drop.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" || e.key === " ") {
-    e.preventDefault();
-    fileInput.click();
+async function loadPreview(file: File): Promise<void> {
+  try {
+    state.preview = await toImageData(file, 512);
+  } catch {
+    showMessage("Couldn't read that image — keeping the current preview.", "error");
+    return;
   }
-});
+  previewReset.hidden = false;
+  if (state.layout) {
+    renderBands();
+    renderCompare();
+  }
+}
 
-fileInput.addEventListener("change", () => {
-  const file = fileInput.files?.[0];
-  if (file) handleFile(file);
-});
+async function usesSample(): Promise<void> {
+  state.preview = await getSample();
+  previewReset.hidden = true;
+  if (state.layout) {
+    renderBands();
+    renderCompare();
+  }
+}
 
-drop.addEventListener("dragover", (e) => {
-  e.preventDefault();
-  drop.classList.add("dragging");
-});
-drop.addEventListener("dragleave", () => drop.classList.remove("dragging"));
-drop.addEventListener("drop", (e) => {
-  e.preventDefault();
-  drop.classList.remove("dragging");
-  const file = e.dataTransfer?.files?.[0];
-  if (file) handleFile(file);
+function wireDropZone(zone: HTMLElement, input: HTMLInputElement, onFile: (f: File) => void): void {
+  zone.addEventListener("click", (e) => {
+    if ((e.target as HTMLElement).tagName !== "BUTTON") input.click();
+  });
+  zone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      input.click();
+    }
+  });
+  zone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    zone.classList.add("dragging");
+  });
+  zone.addEventListener("dragleave", () => zone.classList.remove("dragging"));
+  zone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    zone.classList.remove("dragging");
+    const f = e.dataTransfer?.files?.[0];
+    if (f) onFile(f);
+  });
+  input.addEventListener("change", () => {
+    const f = input.files?.[0];
+    if (f) onFile(f);
+  });
+}
+
+wireDropZone(lutDrop, lutFile, loadLut);
+wireDropZone(previewDrop, previewFile, loadPreview);
+
+previewReset.addEventListener("click", (e) => {
+  e.stopPropagation();
+  usesSample();
 });
 
 downloadBtn.addEventListener("click", () => {
-  if (cubeText) downloadText(outName, cubeText);
+  if (!state.lut) return;
+  const { name, text } = cubeForActive();
+  downloadText(name, text);
 });
 
 resetBtn.addEventListener("click", () => {
-  cubeText = "";
-  fileInput.value = "";
+  state.lut = null;
+  state.layout = null;
+  state.band = 0;
+  lutFile.value = "";
   result.hidden = true;
   hideMessage();
 });

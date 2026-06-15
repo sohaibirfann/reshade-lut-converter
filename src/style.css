@@ -24,7 +24,7 @@ body {
 }
 
 .app {
-  max-width: 860px;
+  max-width: 880px;
   margin: 0 auto;
   padding: 2.5rem 1.25rem 4rem;
 }
@@ -37,7 +37,7 @@ body {
 .sub {
   margin: 0;
   color: var(--muted);
-  max-width: 56ch;
+  max-width: 60ch;
 }
 
 code {
@@ -59,13 +59,13 @@ code {
 }
 
 .drop:hover,
-.drop:focus-visible {
+.drop:focus-visible,
+.drop.dragging {
   border-color: var(--accent);
   outline: none;
 }
 
 .drop.dragging {
-  border-color: var(--accent);
   background: #222a3a;
 }
 
@@ -108,7 +108,55 @@ code {
   font-weight: 600;
 }
 
-.previews {
+.section-label {
+  margin: 0 0 0.6rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.bands-wrap {
+  margin-bottom: 1.75rem;
+}
+
+.bands {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 0.6rem;
+}
+
+.band {
+  padding: 0;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  cursor: pointer;
+  overflow: hidden;
+  font: inherit;
+  color: var(--muted);
+}
+
+.band canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+}
+
+.band span {
+  display: block;
+  font-size: 0.72rem;
+  padding: 0.25rem;
+}
+
+.band[aria-selected="true"] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.compare {
   display: flex;
   flex-wrap: wrap;
   gap: 1.25rem;
@@ -116,6 +164,7 @@ code {
 
 figure {
   margin: 0;
+  flex: 1 1 280px;
 }
 
 figcaption {
@@ -127,12 +176,40 @@ figcaption {
 canvas {
   display: block;
   width: 100%;
-  max-width: 256px;
+  max-width: 360px;
   height: auto;
   border-radius: 8px;
   border: 1px solid var(--line);
   background: #000;
   image-rendering: pixelated;
+}
+
+.preview-drop {
+  margin-top: 1.5rem;
+  padding: 0.85rem 1rem;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.preview-drop:hover,
+.preview-drop:focus-visible,
+.preview-drop.dragging {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.link {
+  background: none;
+  border: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  margin-left: 0.4rem;
+  text-decoration: underline;
 }
 
 .actions {
