@@ -36,9 +36,25 @@ body {
   padding: 1.25rem 1.5rem 1.5rem;
 }
 
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .head h1 {
   margin: 0 0 0.25rem;
   font-size: clamp(1.2rem, 2.6vw, 1.7rem);
+}
+
+.theme-toggle {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
 }
 
 .sub {
@@ -426,6 +442,25 @@ button.accent:hover {
 .info em {
   color: var(--text);
   font-style: normal;
+}
+
+.foot {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.gh-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.gh-link:hover {
+  color: var(--text);
 }
 
 @media (max-width: 760px) {
