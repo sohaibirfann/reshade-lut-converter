@@ -21,6 +21,7 @@ const bandsWrap = el<HTMLDivElement>("#bands-wrap");
 const bands = el<HTMLDivElement>("#bands");
 const empty = el<HTMLDivElement>("#empty");
 const view = el<HTMLDivElement>("#view");
+const loading = el<HTMLDivElement>("#loading");
 const canvas = el<HTMLCanvasElement>("#canvas");
 const previewDrop = el<HTMLDivElement>("#preview-drop");
 const previewFile = el<HTMLInputElement>("#preview-file");
@@ -59,6 +60,29 @@ function showMessage(text: string, kind: "error" | "warn"): void {
 function hideMessage(): void {
   message.hidden = true;
   message.textContent = "";
+}
+
+// Rebuilding a big atlas contact sheet blocks for a moment; show a spinner for it.
+const HEAVY_BANDS = 8;
+const nextFrame = (): Promise<void> =>
+  new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+
+function isHeavy(): boolean {
+  return state.layout?.kind === "atlas" && (state.layout.lutCount ?? 1) >= HEAVY_BANDS;
+}
+
+async function withLoading(work: () => void): Promise<void> {
+  if (!isHeavy()) {
+    work();
+    return;
+  }
+  loading.hidden = false;
+  await nextFrame(); // let the spinner paint before the blocking work
+  try {
+    work();
+  } finally {
+    loading.hidden = true;
+  }
 }
 
 // Generous ceiling — well above any real LUT, low enough to not blow up the tab.
@@ -274,7 +298,7 @@ async function loadLut(file: File): Promise<void> {
   state.layout = layout;
   state.sourceName = file.name;
   if (!state.preview) state.preview = await getSample();
-  render();
+  await withLoading(render);
 }
 
 function repaint(): void {
@@ -293,13 +317,13 @@ async function loadPreview(file: File): Promise<void> {
     return;
   }
   clearPreview.hidden = false;
-  repaint();
+  await withLoading(repaint);
 }
 
 async function usesSample(): Promise<void> {
   state.preview = await getSample();
   clearPreview.hidden = true;
-  repaint();
+  await withLoading(repaint);
 }
 
 function wireDropZone(zone: HTMLElement, input: HTMLInputElement, onFile: (f: File) => void): void {
