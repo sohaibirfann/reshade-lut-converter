@@ -388,10 +388,44 @@ button.accent:hover {
   padding: 0.75rem;
 }
 
-.foot {
-  margin-top: 1.25rem;
+.info {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
+}
+
+.info h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.info h3 {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.info p {
+  margin: 0;
+  max-width: 80ch;
+}
+
+.info ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.4rem;
+  max-width: 80ch;
+}
+
+.info strong,
+.info em {
+  color: var(--text);
+  font-style: normal;
 }
 
 @media (max-width: 760px) {

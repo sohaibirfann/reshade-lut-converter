@@ -1,4 +1,4 @@
-# ReShade → Photoshop LUT Converter
+# ReShade LUT Converter
 
 A small web app that turns ReShade `.png` LUTs into Photoshop-compatible `.cube` 3D LUTs. Drag a file in, preview the look, download the `.cube`. Everything runs in the browser — **nothing is uploaded**.
 

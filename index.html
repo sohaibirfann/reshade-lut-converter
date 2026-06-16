@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
-    <title>ReShade → Photoshop LUT Converter</title>
+    <title>ReShade LUT Converter</title>
     <meta
       name="description"
       content="Convert ReShade PNG LUTs (strip, MultiLUT atlas, HALD) to Photoshop .cube 3D LUTs, entirely in your browser."
@@ -13,8 +13,8 @@
   <body>
     <div class="app">
       <header class="head">
-        <h1>ReShade → Photoshop LUT Converter</h1>
-        <p class="sub">PNG in, Photoshop <code>.cube</code> out — strip, MultiLUT atlas, or HALD. Runs entirely in your browser.</p>
+        <h1>ReShade LUT Converter</h1>
+        <p class="sub">PNG in, Photoshop <code>.cube</code> out — strip, MultiLUT atlas, or HALD.</p>
       </header>
 
       <div class="dashboard">
@@ -101,9 +101,31 @@
         </section>
       </div>
 
-      <footer class="foot">
-        <p>100% client-side. Your LUT never leaves your machine.</p>
-      </footer>
+      <section class="info">
+        <h2>About this tool</h2>
+        <p>
+          It reads a ReShade <code>.png</code> LUT — a single strip, a MultiLUT
+          atlas, or a HALD CLUT — and writes a Photoshop <code>.cube</code> 3D LUT.
+          For an atlas, pick which band to export. Load the result in Photoshop via
+          <strong>Adjustments → Color Lookup → Load 3D LUT</strong>.
+        </p>
+
+        <h3>Good to know</h3>
+        <ul>
+          <li>
+            <strong>Preview strength</strong> only affects the on-screen preview —
+            the exported <code>.cube</code> is always the full-strength LUT.
+          </li>
+          <li>The preview is a quick visual check (trilinear-sampled), not a color-managed proof.</li>
+          <li>
+            MultiLUT files don't store names, only order — bands show as
+            <em>LUT 1, 2, …</em> and you choose by index.
+          </li>
+          <li>Square images are read as HALD, so a plain square photo can be misdetected.</li>
+          <li>Cube edges are capped at 128 and oversized images are rejected, to keep the tab responsive.</li>
+          <li>Strips need <code>width = size²</code> (e.g. 256×16); fewer slices than the cube edge are rejected.</li>
+        </ul>
+      </section>
     </div>
 
     <script type="module" src="/src/main.ts"></script>
