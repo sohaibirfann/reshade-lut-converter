@@ -1,11 +1,13 @@
 :root {
-  --bg: #14161a;
-  --panel: #1d2128;
-  --line: #2c313b;
-  --text: #e6e8ec;
-  --muted: #9aa3b2;
-  --accent: #5b9dff;
-  --accent-ink: #0b1220;
+  --bg: #0b0c10;
+  --panel: #121214;
+  --panel-2: #1a1a1e;
+  --line: #26272d;
+  --text: #f2f3f5;
+  --muted: #8b909c;
+  --accent: #2563eb;
+  --accent-hover: #3b78f0;
+  --accent-ink: #ffffff;
   --danger: #ff6b6b;
   --warn: #ffc861;
   color-scheme: dark;
@@ -13,6 +15,11 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* Class selectors with `display` otherwise beat the UA [hidden] rule. */
+[hidden] {
+  display: none !important;
 }
 
 body {
@@ -24,35 +31,49 @@ body {
 }
 
 .app {
-  max-width: 880px;
+  max-width: min(1600px, 95vw);
   margin: 0 auto;
-  padding: 2.5rem 1.25rem 4rem;
+  padding: 1.25rem 1.5rem 1.5rem;
 }
 
 .head h1 {
-  margin: 0 0 0.4rem;
-  font-size: clamp(1.4rem, 4vw, 2rem);
+  margin: 0 0 0.25rem;
+  font-size: clamp(1.2rem, 2.6vw, 1.7rem);
 }
 
 .sub {
   margin: 0;
   color: var(--muted);
-  max-width: 60ch;
 }
 
 code {
-  background: var(--panel);
+  background: var(--panel-2);
   padding: 0.1em 0.35em;
   border-radius: 4px;
   font-size: 0.9em;
 }
 
-.drop {
-  margin-top: 2rem;
-  border: 2px dashed var(--line);
-  border-radius: 14px;
+.dashboard {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) 1fr;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  align-items: start;
+}
+
+.panel {
   background: var(--panel);
-  padding: 3rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1.25rem;
+}
+
+/* ---- left ---- */
+.drop {
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  background: var(--panel-2);
+  padding: 1.5rem 1rem;
   text-align: center;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
@@ -66,27 +87,227 @@ code {
 }
 
 .drop.dragging {
-  background: #222a3a;
+  background: #16213a;
 }
 
 .drop-title {
   margin: 0 0 0.25rem;
-  font-size: 1.1rem;
   font-weight: 600;
 }
 
 .drop-hint {
-  margin: 0;
+  margin: 0 0 1rem;
   color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.file-row {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel-2);
+}
+
+.file-name {
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.file-meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.section-label {
+  margin: 1.1rem 0 0.6rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.bands {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 0.6rem;
+  max-height: 34vh;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.band {
+  position: relative;
+  border: 2px solid var(--line);
+  border-radius: 9px;
+  overflow: hidden;
+  background: var(--panel-2);
+  cursor: pointer;
+}
+
+.band:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.band canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+}
+
+.band .badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.1rem 0.35rem;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.65);
+  color: var(--text);
+}
+
+.band[aria-selected="true"] {
+  border-color: var(--accent);
+}
+
+/* ---- right ---- */
+.stage {
+  min-height: 300px;
+}
+
+.empty {
+  display: grid;
+  place-content: center;
+  text-align: center;
+  min-height: 40vh;
+  color: var(--muted);
+}
+
+.empty-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.empty-text {
+  margin: 0;
   font-size: 0.9rem;
 }
 
-.message {
-  margin-top: 1.25rem;
-  padding: 0.85rem 1rem;
+.canvas-wrap {
+  position: relative;
+}
+
+.view canvas {
+  display: block;
+  width: 100%;
+  max-height: 62vh;
+  object-fit: contain;
   border-radius: 10px;
   border: 1px solid var(--line);
-  background: var(--panel);
+  background: #000;
+  image-rendering: auto;
+}
+
+.clear-preview {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.clear-preview:hover {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.toolbar {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.preview-drop {
+  flex: 1 1 220px;
+  padding: 0.7rem 0.9rem;
+  border: 1px dashed var(--muted);
+  border-radius: 9px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+
+.preview-drop:hover,
+.preview-drop:focus-visible,
+.preview-drop.dragging {
+  border-color: var(--accent);
+  color: var(--accent);
+  outline: none;
+}
+
+.pd-label {
+  white-space: nowrap;
+}
+
+.slider {
+  flex: 1 1 220px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.slider small {
+  font-size: 0.74rem;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.35rem;
+}
+
+.slider input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.slider output {
+  min-width: 3.2ch;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- shared controls ---- */
+.message {
+  margin-top: 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  font-size: 0.9rem;
 }
 
 .message.error {
@@ -99,134 +320,14 @@ code {
   color: var(--warn);
 }
 
-.result {
-  margin-top: 1.75rem;
-}
-
-.detected {
-  margin: 0 0 1.25rem;
-  font-weight: 600;
-}
-
-.section-label {
-  margin: 0 0 0.6rem;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted);
-}
-
-.bands-wrap {
-  margin-bottom: 1.75rem;
-}
-
-.bands {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  gap: 0.6rem;
-}
-
-.band {
-  padding: 0;
-  border: 2px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-  cursor: pointer;
-  overflow: hidden;
-  font: inherit;
-  color: var(--muted);
-}
-
-.band canvas {
-  display: block;
-  width: 100%;
-  height: auto;
-  border: 0;
-  border-radius: 0;
-}
-
-.band span {
-  display: block;
-  font-size: 0.72rem;
-  padding: 0.25rem;
-}
-
-.band[aria-selected="true"] {
-  border-color: var(--accent);
-  color: var(--text);
-}
-
-.compare {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.25rem;
-}
-
-figure {
-  margin: 0;
-  flex: 1 1 280px;
-}
-
-figcaption {
-  font-size: 0.8rem;
-  color: var(--muted);
-  margin-bottom: 0.4rem;
-}
-
-canvas {
-  display: block;
-  width: 100%;
-  max-width: 360px;
-  height: auto;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: #000;
-  image-rendering: pixelated;
-}
-
-.preview-drop {
-  margin-top: 1.5rem;
-  padding: 0.85rem 1rem;
-  border: 1px dashed var(--line);
-  border-radius: 10px;
-  color: var(--muted);
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-
-.preview-drop:hover,
-.preview-drop:focus-visible,
-.preview-drop.dragging {
-  border-color: var(--accent);
-  outline: none;
-}
-
-.link {
-  background: none;
-  border: 0;
-  color: var(--accent);
-  cursor: pointer;
-  font: inherit;
-  padding: 0;
-  margin-left: 0.4rem;
-  text-decoration: underline;
-}
-
-.actions {
-  margin-top: 1.75rem;
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
 button {
   font: inherit;
   font-weight: 600;
-  padding: 0.7rem 1.3rem;
+  padding: 0.6rem 1.1rem;
   border-radius: 9px;
-  border: 1px solid transparent;
-  background: var(--accent);
-  color: var(--accent-ink);
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
   cursor: pointer;
 }
 
@@ -235,14 +336,30 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
-button.ghost {
-  background: transparent;
-  border-color: var(--line);
-  color: var(--text);
+button.accent {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+
+button.accent:hover {
+  background: var(--accent-hover);
+}
+
+.download {
+  margin-top: 0.9rem;
+  width: 100%;
+  padding: 0.75rem;
 }
 
 .foot {
-  margin-top: 3rem;
+  margin-top: 1.25rem;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 760px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
 }

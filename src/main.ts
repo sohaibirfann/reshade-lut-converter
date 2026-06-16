@@ -1,7 +1,7 @@
 import "./style.css";
 import { detectLayout, type DetectionResult } from "./detect";
 import { convertToCube, convertHaldToCube, toCubeFilename } from "./convert";
-import { applyStrip, applyHald } from "./preview";
+import { applyStrip, applyHald, blend } from "./preview";
 import { downloadText } from "./download";
 
 function el<T extends Element>(sel: string): T {
@@ -12,19 +12,22 @@ function el<T extends Element>(sel: string): T {
 
 const lutDrop = el<HTMLDivElement>("#lut-drop");
 const lutFile = el<HTMLInputElement>("#lut-file");
+const lutBrowse = el<HTMLButtonElement>("#lut-browse");
 const message = el<HTMLParagraphElement>("#message");
-const result = el<HTMLElement>("#result");
-const detected = el<HTMLParagraphElement>("#detected");
+const fileRow = el<HTMLDivElement>("#file-row");
+const fileName = el<HTMLSpanElement>("#file-name");
+const fileMeta = el<HTMLSpanElement>("#file-meta");
 const bandsWrap = el<HTMLDivElement>("#bands-wrap");
 const bands = el<HTMLDivElement>("#bands");
-const before = el<HTMLCanvasElement>("#before");
-const after = el<HTMLCanvasElement>("#after");
-const afterLabel = el<HTMLElement>("#after-label");
+const empty = el<HTMLDivElement>("#empty");
+const view = el<HTMLDivElement>("#view");
+const canvas = el<HTMLCanvasElement>("#canvas");
 const previewDrop = el<HTMLDivElement>("#preview-drop");
 const previewFile = el<HTMLInputElement>("#preview-file");
-const previewReset = el<HTMLButtonElement>("#preview-reset");
+const clearPreview = el<HTMLButtonElement>("#clear-preview");
+const opacity = el<HTMLInputElement>("#opacity");
+const opacityVal = el<HTMLOutputElement>("#opacity-val");
 const downloadBtn = el<HTMLButtonElement>("#download");
-const resetBtn = el<HTMLButtonElement>("#reset");
 
 interface State {
   lut: ImageData | null;
@@ -32,9 +35,19 @@ interface State {
   sourceName: string;
   band: number;
   preview: ImageData | null;
+  graded: ImageData | null;
+  opacity: number;
 }
 
-const state: State = { lut: null, layout: null, sourceName: "", band: 0, preview: null };
+const state: State = {
+  lut: null,
+  layout: null,
+  sourceName: "",
+  band: 0,
+  preview: null,
+  graded: null,
+  opacity: 100,
+};
 let sampleCache: ImageData | null = null;
 
 function showMessage(text: string, kind: "error" | "warn"): void {
@@ -53,10 +66,10 @@ async function toImageData(source: ImageBitmapSource, maxSide = Infinity): Promi
   const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
   const w = Math.max(1, Math.round(bitmap.width * scale));
   const h = Math.max(1, Math.round(bitmap.height * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
   if (!ctx) throw new Error("no 2d context");
   ctx.drawImage(bitmap, 0, 0, w, h);
   return ctx.getImageData(0, 0, w, h);
@@ -67,10 +80,10 @@ async function getSample(): Promise<ImageData> {
   return sampleCache;
 }
 
-function putOnCanvas(canvas: HTMLCanvasElement, img: ImageData): void {
-  canvas.width = img.width;
-  canvas.height = img.height;
-  canvas.getContext("2d")?.putImageData(img, 0, 0);
+function putOnCanvas(target: HTMLCanvasElement, img: ImageData): void {
+  target.width = img.width;
+  target.height = img.height;
+  target.getContext("2d")?.putImageData(img, 0, 0);
 }
 
 function downscale(img: ImageData, maxSide: number): ImageData {
@@ -88,16 +101,15 @@ function downscale(img: ImageData, maxSide: number): ImageData {
   return ctx.getImageData(0, 0, dst.width, dst.height);
 }
 
-// Apply the active LUT (selected atlas band, or the whole strip/HALD) to an image.
-function applyActive(image: ImageData): ImageData {
-  const { lut, layout, band } = state;
+function applyLook(image: ImageData, band: number): ImageData {
+  const { lut, layout } = state;
   const size = layout!.edgeSize!;
   if (layout!.kind === "hald") return applyHald(image, lut!.data, size);
   return applyStrip(image, lut!.data, lut!.width, size, band * size);
 }
 
-function cubeForActive(): { name: string; text: string } {
-  const { lut, layout, band, sourceName } = state;
+function cubeFor(band: number): { name: string; text: string } {
+  const { lut, layout, sourceName } = state;
   const size = layout!.edgeSize!;
   const title = sourceName.replace(/\.png$/i, "");
   if (layout!.kind === "hald") {
@@ -113,24 +125,59 @@ function cubeForActive(): { name: string; text: string } {
 }
 
 function describeLayout(l: DetectionResult): string {
-  const dim = `${l.edgeSize}×${l.edgeSize}×${l.edgeSize}`;
-  if (l.kind === "hald") return `Detected: HALD CLUT, ${dim}`;
-  if (l.kind === "atlas") return `Detected: MultiLUT atlas, ${l.lutCount} LUTs of ${dim}`;
-  return `Detected: ReShade strip LUT, ${dim}`;
+  const cube = `${l.edgeSize}³`;
+  if (l.kind === "hald") return `HALD CLUT · ${cube}`;
+  if (l.kind === "atlas") return `MultiLUT atlas · ${l.lutCount} × ${cube}`;
+  return `ReShade strip · ${cube}`;
+}
+
+function drawCanvas(): void {
+  putOnCanvas(canvas, blend(state.preview!, state.graded!, state.opacity / 100));
+}
+
+function downloadBand(band: number): void {
+  const { name, text } = cubeFor(band);
+  downloadText(name, text);
 }
 
 function selectBand(i: number): void {
   state.band = i;
-  [...bands.children].forEach((btn, idx) =>
-    btn.setAttribute("aria-selected", String(idx === i)),
+  [...bands.children].forEach((card, idx) =>
+    card.setAttribute("aria-selected", String(idx === i)),
   );
-  afterLabel.textContent = `After — LUT ${i + 1}`;
-  putOnCanvas(after, applyActive(state.preview!));
+  state.graded = applyLook(state.preview!, i);
+  drawCanvas();
+}
+
+function bandCard(i: number, thumb: ImageData): HTMLElement {
+  const card = document.createElement("div");
+  card.className = "band";
+  card.setAttribute("role", "option");
+  card.tabIndex = 0;
+  card.setAttribute("aria-selected", String(i === state.band));
+  card.setAttribute("aria-label", `LUT ${i + 1}`);
+
+  const c = document.createElement("canvas");
+  putOnCanvas(c, applyLook(thumb, i));
+
+  const badge = document.createElement("span");
+  badge.className = "badge";
+  badge.textContent = `LUT ${i + 1}`;
+
+  card.append(c, badge);
+  card.addEventListener("click", () => selectBand(i));
+  card.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      selectBand(i);
+    }
+  });
+  return card;
 }
 
 function renderBands(): void {
-  const { layout, lut, preview } = state;
   bands.replaceChildren();
+  const { layout, preview } = state;
   if (!layout || layout.kind !== "atlas") {
     bandsWrap.hidden = true;
     return;
@@ -138,33 +185,24 @@ function renderBands(): void {
   bandsWrap.hidden = false;
   const thumb = downscale(preview!, 120);
   for (let i = 0; i < layout.lutCount!; i++) {
-    const btn = document.createElement("button");
-    btn.className = "band";
-    btn.setAttribute("role", "option");
-    btn.setAttribute("aria-selected", String(i === state.band));
-    const canvas = document.createElement("canvas");
-    putOnCanvas(canvas, applyStrip(thumb, lut!.data, lut!.width, layout.edgeSize!, i * layout.edgeSize!));
-    const span = document.createElement("span");
-    span.textContent = `LUT ${i + 1}`;
-    btn.append(canvas, span);
-    btn.addEventListener("click", () => selectBand(i));
-    bands.appendChild(btn);
+    bands.appendChild(bandCard(i, thumb));
   }
 }
 
-function renderCompare(): void {
-  putOnCanvas(before, state.preview!);
-  putOnCanvas(after, applyActive(state.preview!));
-}
-
 function render(): void {
-  detected.textContent = describeLayout(state.layout!);
-  afterLabel.textContent = state.layout!.kind === "atlas" ? `After — LUT ${state.band + 1}` : "After";
+  empty.hidden = true;
+  view.hidden = false;
+  fileRow.hidden = false;
+  fileName.textContent = state.sourceName;
+  fileMeta.textContent = describeLayout(state.layout!);
+
   if (state.layout!.warning) showMessage(state.layout!.warning, "warn");
   else hideMessage();
+
+  state.band = 0;
+  state.graded = applyLook(state.preview!, 0);
   renderBands();
-  renderCompare();
-  result.hidden = false;
+  drawCanvas();
 }
 
 function isPng(file: File): boolean {
@@ -185,7 +223,6 @@ async function decodeLut(file: File): Promise<ImageData | null> {
 }
 
 async function loadLut(file: File): Promise<void> {
-  result.hidden = true;
   hideMessage();
   const img = await decodeLut(file);
   if (!img) return;
@@ -199,9 +236,15 @@ async function loadLut(file: File): Promise<void> {
   state.lut = img;
   state.layout = layout;
   state.sourceName = file.name;
-  state.band = 0;
   if (!state.preview) state.preview = await getSample();
   render();
+}
+
+function repaint(): void {
+  if (!state.layout) return;
+  state.graded = applyLook(state.preview!, state.band);
+  renderBands();
+  drawCanvas();
 }
 
 async function loadPreview(file: File): Promise<void> {
@@ -211,20 +254,14 @@ async function loadPreview(file: File): Promise<void> {
     showMessage("Couldn't read that image — keeping the current preview.", "error");
     return;
   }
-  previewReset.hidden = false;
-  if (state.layout) {
-    renderBands();
-    renderCompare();
-  }
+  clearPreview.hidden = false;
+  repaint();
 }
 
 async function usesSample(): Promise<void> {
   state.preview = await getSample();
-  previewReset.hidden = true;
-  if (state.layout) {
-    renderBands();
-    renderCompare();
-  }
+  clearPreview.hidden = true;
+  repaint();
 }
 
 function wireDropZone(zone: HTMLElement, input: HTMLInputElement, onFile: (f: File) => void): void {
@@ -257,22 +294,19 @@ function wireDropZone(zone: HTMLElement, input: HTMLInputElement, onFile: (f: Fi
 wireDropZone(lutDrop, lutFile, loadLut);
 wireDropZone(previewDrop, previewFile, loadPreview);
 
-previewReset.addEventListener("click", (e) => {
+lutBrowse.addEventListener("click", (e) => {
   e.stopPropagation();
-  usesSample();
+  lutFile.click();
+});
+
+clearPreview.addEventListener("click", usesSample);
+
+opacity.addEventListener("input", () => {
+  state.opacity = Number(opacity.value);
+  opacityVal.textContent = `${state.opacity}%`;
+  drawCanvas();
 });
 
 downloadBtn.addEventListener("click", () => {
-  if (!state.lut) return;
-  const { name, text } = cubeForActive();
-  downloadText(name, text);
-});
-
-resetBtn.addEventListener("click", () => {
-  state.lut = null;
-  state.layout = null;
-  state.band = 0;
-  lutFile.value = "";
-  result.hidden = true;
-  hideMessage();
+  if (state.lut) downloadBand(state.band);
 });

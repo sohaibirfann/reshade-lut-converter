@@ -37,3 +37,12 @@ export function applyStrip(
 export function applyHald(image: ImageData, lut: Uint8ClampedArray, size: number): ImageData {
   return sampleThrough(image, lut, size, (ri, gi, bi) => (ri + gi * size + bi * size * size) * 4);
 }
+
+// Mix graded toward the original by `t` (0 = original, 1 = full grade). Preview only.
+export function blend(original: ImageData, graded: ImageData, t: number): ImageData {
+  const out = new ImageData(original.width, original.height);
+  for (let i = 0; i < original.data.length; i++) {
+    out.data[i] = original.data[i] + (graded.data[i] - original.data[i]) * t;
+  }
+  return out;
+}

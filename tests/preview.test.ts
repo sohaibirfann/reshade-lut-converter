@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll } from "vitest";
-import { applyStrip, applyHald } from "../src/preview";
+import { describe, it, expect } from "vitest";
+import { applyStrip, applyHald, blend } from "../src/preview";
 import { neutralStrip, neutralHald } from "./helpers";
 
 class FakeImageData {
@@ -9,9 +9,7 @@ class FakeImageData {
   }
 }
 
-beforeAll(() => {
-  (globalThis as unknown as { ImageData: unknown }).ImageData ??= FakeImageData;
-});
+(globalThis as unknown as { ImageData: unknown }).ImageData ??= FakeImageData;
 
 function pixel(rgb: [number, number, number]): ImageData {
   const img = new ImageData(1, 1);
@@ -47,5 +45,19 @@ describe("applyHald", () => {
   it("passes colour through an identity HALD", () => {
     const out = applyHald(pixel([255, 255, 255]), neutralHald(4), 4);
     expect([out.data[0], out.data[1], out.data[2]]).toEqual([255, 255, 255]);
+  });
+});
+
+describe("blend", () => {
+  const black = pixel([0, 0, 0]);
+  const white = pixel([255, 255, 255]);
+
+  it("returns the original at t=0 and the grade at t=1", () => {
+    expect(blend(black, white, 0).data[0]).toBe(0);
+    expect(blend(black, white, 1).data[0]).toBe(255);
+  });
+
+  it("mixes halfway at t=0.5", () => {
+    expect(blend(black, white, 0.5).data[0]).toBe(128); // 127.5 ties-to-even in Uint8Clamped
   });
 });
