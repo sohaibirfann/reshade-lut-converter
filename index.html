@@ -4,6 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
+    <script>
+      // Set the theme before first paint to avoid a flash.
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (t !== "light" && t !== "dark") {
+            t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+          }
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
     <title>ReShade LUT Converter</title>
     <meta
       name="description"
@@ -96,7 +108,7 @@
               </div>
 
               <label class="slider">
-                <span>Preview strength <small>(does not change the .cube)</small></span>
+                <span>Preview strength</span>
                 <span class="slider-row">
                   <input id="opacity" type="range" min="0" max="100" value="100" />
                   <output id="opacity-val">100%</output>
@@ -110,30 +122,53 @@
       </div>
 
       <section class="info">
-        <h2>About this tool</h2>
-        <p>
-          It reads a ReShade <code>.png</code> LUT — a single strip, a MultiLUT
-          atlas, or a HALD CLUT — and writes a Photoshop <code>.cube</code> 3D LUT.
-          For an atlas, pick which band to export. Load the result in Photoshop via
-          <strong>Adjustments → Color Lookup → Load 3D LUT</strong>.
-        </p>
+        <div class="info-col">
+          <h2>About this tool</h2>
+          <p>
+            It reads a ReShade <code>.png</code> LUT — a single strip, a MultiLUT
+            atlas, or a HALD CLUT — and writes a Photoshop <code>.cube</code> 3D LUT.
+            For an atlas, pick which band to export.
+          </p>
 
-        <h3>Good to know</h3>
-        <ul>
-          <li>
-            <strong>Preview strength</strong> only affects the on-screen preview —
-            the exported <code>.cube</code> is always the full-strength LUT.
-          </li>
-          <li>The preview is a quick visual check (trilinear-sampled), not a color-managed proof.</li>
-          <li>The preview image is scaled down for speed, so it shows the color shift, not full-resolution detail — the exported <code>.cube</code> is unaffected.</li>
-          <li>
-            MultiLUT files don't store names, only order — bands show as
-            <em>LUT 1, 2, …</em> and you choose by index.
-          </li>
-          <li>Square images are read as HALD, so a plain square photo can be misdetected.</li>
-          <li>Cube edges are capped at 128 and oversized images are rejected, to keep the tab responsive.</li>
-          <li>Strips need <code>width = size²</code> (e.g. 256×16); fewer slices than the cube edge are rejected.</li>
-        </ul>
+          <h3>Good to know</h3>
+          <ul>
+            <li>
+              <strong>Preview strength</strong> only affects the on-screen preview —
+              the exported <code>.cube</code> is always the full-strength LUT.
+            </li>
+            <li>The preview is a quick visual check (trilinear-sampled), not a color-managed proof.</li>
+            <li>The preview image is scaled down for speed, so it shows the color shift, not full-resolution detail — the exported <code>.cube</code> is unaffected.</li>
+            <li>
+              MultiLUT files don't store names, only order — bands show as
+              <em>LUT 1, 2, …</em> and you choose by index.
+            </li>
+            <li>Square images are read as HALD, so a plain square photo can be misdetected.</li>
+            <li>Cube edges are capped at 128 and oversized images are rejected, to keep the tab responsive.</li>
+            <li>Strips need <code>width = size²</code> (e.g. 256×16); fewer slices than the cube edge are rejected.</li>
+          </ul>
+        </div>
+
+        <div class="info-col">
+          <h2>Load it in Photoshop</h2>
+          <p class="info-note">
+            Just trying one out? Add a <strong>Color Lookup</strong> adjustment layer, then choose
+            <strong>Load 3D LUT…</strong> from the <strong>3DLUT File</strong> dropdown to browse to
+            the file directly — no copying or restart needed.
+          </p>
+
+          <h3>To keep it installed</h3>
+          <ol>
+            <li>
+              Copy the <code>.cube</code> into Photoshop's <strong>3DLUTs</strong> presets folder:
+              <br />Windows: <code>…\Adobe Photoshop&lt;ver&gt;\Presets\3DLUTs</code>
+              <br />macOS: <code>…/Adobe Photoshop&lt;ver&gt;/Presets/3DLUTs</code>
+            </li>
+            <li>Restart Photoshop so it picks up the new LUT.</li>
+            <li>Add a <strong>Color Lookup</strong> adjustment layer (<em>Layer → New Adjustment Layer → Color Lookup</em>).</li>
+            <li>Choose your LUT from the <strong>3DLUT File</strong> dropdown.</li>
+            <li>Adjust the layer's <strong>opacity</strong> to dial the grade strength.</li>
+          </ol>
+        </div>
       </section>
 
       <footer class="foot">

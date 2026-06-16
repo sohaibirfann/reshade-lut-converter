@@ -11,6 +11,20 @@
   --danger: #ff6b6b;
   --warn: #ffc861;
   color-scheme: dark;
+  font-size: 17px;
+}
+
+:root[data-theme="light"] {
+  --bg: #f5f6f8;
+  --panel: #ffffff;
+  --panel-2: #eef0f3;
+  --line: #d7dae0;
+  --text: #14161a;
+  --muted: #5c6370;
+  --accent-hover: #1d4ed8;
+  --danger: #d12d2d;
+  --warn: #a96a12;
+  color-scheme: light;
 }
 
 * {
@@ -103,7 +117,7 @@ code {
 }
 
 .drop.dragging {
-  background: #16213a;
+  background: rgba(37, 99, 235, 0.1);
 }
 
 .drop-title {
@@ -330,10 +344,6 @@ code {
   color: var(--muted);
 }
 
-.slider small {
-  font-size: 0.74rem;
-}
-
 .slider-row {
   display: flex;
   align-items: center;
@@ -410,6 +420,9 @@ button.accent:hover {
   border-top: 1px solid var(--line);
   color: var(--muted);
   font-size: 0.9rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem 2.5rem;
 }
 
 .info h2 {
@@ -427,15 +440,20 @@ button.accent:hover {
 
 .info p {
   margin: 0;
-  max-width: 80ch;
 }
 
-.info ul {
+.info ul,
+.info ol {
   margin: 0;
   padding-left: 1.1rem;
   display: grid;
-  gap: 0.4rem;
-  max-width: 80ch;
+  gap: 0.5rem;
+}
+
+.info-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.82rem;
+  opacity: 0.85;
 }
 
 .info strong,
@@ -464,7 +482,8 @@ button.accent:hover {
 }
 
 @media (max-width: 760px) {
-  .dashboard {
+  .dashboard,
+  .info {
     grid-template-columns: 1fr;
   }
 }

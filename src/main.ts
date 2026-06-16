@@ -29,6 +29,7 @@ const clearPreview = el<HTMLButtonElement>("#clear-preview");
 const opacity = el<HTMLInputElement>("#opacity");
 const opacityVal = el<HTMLOutputElement>("#opacity-val");
 const downloadBtn = el<HTMLButtonElement>("#download");
+const themeToggle = el<HTMLButtonElement>("#theme-toggle");
 
 interface State {
   lut: ImageData | null;
@@ -371,4 +372,19 @@ opacity.addEventListener("input", () => {
 
 downloadBtn.addEventListener("click", () => {
   if (state.lut) downloadBand(state.band);
+});
+
+// The initial theme is set by an inline script in <head>; this just toggles it.
+function reflectTheme(theme: string): void {
+  themeToggle.setAttribute("aria-pressed", String(theme === "light"));
+  themeToggle.title = theme === "light" ? "Switch to dark theme" : "Switch to light theme";
+}
+
+reflectTheme(document.documentElement.getAttribute("data-theme") ?? "dark");
+
+themeToggle.addEventListener("click", () => {
+  const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
+  reflectTheme(next);
 });
