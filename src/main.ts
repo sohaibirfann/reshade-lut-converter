@@ -84,8 +84,32 @@ async function toImageData(source: ImageBitmapSource, maxSide = Infinity): Promi
   return ctx.getImageData(0, 0, w, h);
 }
 
+// Used if the bundled sample can't be fetched (e.g. offline before it's cached).
+function fallbackSample(): ImageData {
+  const w = 256;
+  const h = 160;
+  const img = new ImageData(w, h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      img.data[i] = (x / (w - 1)) * 255;
+      img.data[i + 1] = (y / (h - 1)) * 255;
+      img.data[i + 2] = 128;
+      img.data[i + 3] = 255;
+    }
+  }
+  return img;
+}
+
 async function getSample(): Promise<ImageData> {
-  if (!sampleCache) sampleCache = await toImageData(await (await fetch("/sample.png")).blob());
+  if (sampleCache) return sampleCache;
+  try {
+    const res = await fetch("/sample.png");
+    if (!res.ok) throw new Error(`sample ${res.status}`);
+    sampleCache = await toImageData(await res.blob());
+  } catch {
+    sampleCache = fallbackSample();
+  }
   return sampleCache;
 }
 
