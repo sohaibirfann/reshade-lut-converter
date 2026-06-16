@@ -1,6 +1,9 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 
 // BASE_PATH lets GitHub Pages serve from /<repo>/ while local/Netlify stay at root.
 export default defineConfig({
   base: process.env.BASE_PATH ?? "/",
+  test: {
+    include: ["tests/**/*.test.ts"],
+  },
 });

@@ -3,6 +3,11 @@ dist
 dist-ssr
 *.local
 
+# playwright
+test-results
+playwright-report
+.playwright
+
 # logs
 logs
 *.log
