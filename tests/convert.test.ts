@@ -1,10 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { convertToCube, convertHaldToCube, toCubeFilename } from "../src/convert";
-import { neutralStrip, neutralHald } from "./helpers";
-
-function dataLines(cube: string): string[] {
-  return cube.trimEnd().split("\n").filter((l) => /^[\d.]+ [\d.]+ [\d.]+$/.test(l));
-}
+import { neutralStrip, neutralHald, dataLines } from "./helpers";
 
 describe("convertToCube — strip", () => {
   it.each([16, 32])("converts a neutral size-%i strip to an identity cube", (size) => {

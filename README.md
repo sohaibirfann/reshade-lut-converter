@@ -40,10 +40,13 @@ This app is the zero-friction counterpart: no executable, no terminal, no flags.
 npm install
 npm run dev      # local dev server
 npm test         # unit tests (Vitest)
+npm run e2e      # browser tests (Playwright)
 npm run build    # static production build to dist/
 ```
 
 The conversion and detection logic (`src/detect.ts`, `src/convert.ts`) is pure — plain arrays in, text out, no DOM — which is what makes it unit-testable without a browser. The UI (`src/main.ts`) is vanilla TypeScript with no framework and no runtime dependencies.
+
+The test suite includes a **correctness cross-check**: a known graded cube is encoded independently as both a strip and a HALD, and both must reproduce the same reference `.cube` byte-for-byte — confirming the channel ordering, index math, and normalization across formats.
 
 ## Deploy
 
