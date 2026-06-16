@@ -61,8 +61,17 @@ function hideMessage(): void {
   message.textContent = "";
 }
 
+// Generous ceiling — well above any real LUT, low enough to not blow up the tab.
+const MAX_PIXELS = 64_000_000;
+
+class ImageTooLargeError extends Error {}
+
 async function toImageData(source: ImageBitmapSource, maxSide = Infinity): Promise<ImageData> {
   const bitmap = await createImageBitmap(source);
+  if (bitmap.width * bitmap.height > MAX_PIXELS) {
+    bitmap.close();
+    throw new ImageTooLargeError(`${bitmap.width}×${bitmap.height}`);
+  }
   const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
   const w = Math.max(1, Math.round(bitmap.width * scale));
   const h = Math.max(1, Math.round(bitmap.height * scale));
@@ -216,8 +225,12 @@ async function decodeLut(file: File): Promise<ImageData | null> {
   }
   try {
     return await toImageData(file);
-  } catch {
-    showMessage("Couldn't read that image — is the file corrupt?", "error");
+  } catch (err) {
+    if (err instanceof ImageTooLargeError) {
+      showMessage(`That image is too large to process in the browser (${err.message}).`, "error");
+    } else {
+      showMessage("Couldn't read that image — is the file corrupt?", "error");
+    }
     return null;
   }
 }
@@ -250,8 +263,9 @@ function repaint(): void {
 async function loadPreview(file: File): Promise<void> {
   try {
     state.preview = await toImageData(file, 512);
-  } catch {
-    showMessage("Couldn't read that image — keeping the current preview.", "error");
+  } catch (err) {
+    const why = err instanceof ImageTooLargeError ? "it's too large" : "it couldn't be read";
+    showMessage(`Test image skipped — ${why}. Keeping the current preview.`, "error");
     return;
   }
   clearPreview.hidden = false;
