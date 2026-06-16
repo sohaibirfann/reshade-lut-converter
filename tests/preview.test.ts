@@ -30,6 +30,15 @@ describe("applyStrip", () => {
     expect([out.data[0], out.data[1], out.data[2]]).toEqual([0, 0, 0]);
   });
 
+  it("interpolates between grid points instead of snapping", () => {
+    // size-2 identity LUT: only red 0 and 255 exist. A mid input should
+    // interpolate to ~mid (trilinear), not snap to 0 or 255 (nearest).
+    const { data, width } = neutralStrip(2);
+    const out = applyStrip(pixel([128, 0, 0]), data, width, 2);
+    expect(out.data[0]).toBeGreaterThan(120);
+    expect(out.data[0]).toBeLessThan(136);
+  });
+
   it("reads the band selected by yOffset", () => {
     const a = neutralStrip(4);
     const b = neutralStrip(4, true);
