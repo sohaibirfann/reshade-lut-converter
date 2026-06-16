@@ -128,7 +128,7 @@ function fallbackSample(): ImageData {
 async function getSample(): Promise<ImageData> {
   if (sampleCache) return sampleCache;
   try {
-    const res = await fetch("/sample.png");
+    const res = await fetch(`${import.meta.env.BASE_URL}sample.png`);
     if (!res.ok) throw new Error(`sample ${res.status}`);
     sampleCache = await toImageData(await res.blob());
   } catch {
