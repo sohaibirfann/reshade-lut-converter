@@ -4,6 +4,7 @@ import {
   UNKNOWN_MESSAGE,
   SQUARE_MESSAGE,
   TOO_FEW_SLICES_MESSAGE,
+  TOO_MANY_LUTS_MESSAGE,
 } from "../src/detect";
 
 describe("detectLayout — strips", () => {
@@ -38,6 +39,13 @@ describe("detectLayout — atlases", () => {
     [1089, 330, 33, 10],
   ])("detects a %i×%i MultiLUT atlas", (w, h, edge, count) => {
     expect(detectLayout(w, h)).toMatchObject({ kind: "atlas", edgeSize: edge, lutCount: count });
+  });
+
+  it("rejects an atlas with an unrealistic number of bands", () => {
+    // 16×800: edge 4, 200 bands — would flood the contact sheet
+    const r = detectLayout(16, 800);
+    expect(r.kind).toBe("unknown");
+    expect(r.error).toBe(TOO_MANY_LUTS_MESSAGE);
   });
 });
 

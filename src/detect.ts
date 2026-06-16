@@ -18,8 +18,12 @@ export const SQUARE_MESSAGE =
 export const TOO_FEW_SLICES_MESSAGE =
   "This strip has fewer slices than its cube edge, so it doesn't contain a full LUT. Expected at least width = height² (e.g. 256×16).";
 
+export const TOO_MANY_LUTS_MESSAGE =
+  "This looks like an atlas with an unrealistic number of LUTs — likely not a real MultiLUT image.";
+
 const MIN_EDGE = 2;
 const MAX_EDGE = 128;
+const MAX_LUTS = 100;
 
 function inRange(n: number): boolean {
   return Number.isInteger(n) && n >= MIN_EDGE && n <= MAX_EDGE;
@@ -57,7 +61,9 @@ function detectStrip(width: number, height: number): DetectionResult | null {
 function detectAtlas(width: number, height: number): DetectionResult | null {
   const s = Math.round(Math.sqrt(width));
   if (s * s !== width || !inRange(s) || height % s !== 0) return null;
-  return { kind: "atlas", edgeSize: s, lutCount: height / s };
+  const lutCount = height / s;
+  if (lutCount > MAX_LUTS) return { kind: "unknown", error: TOO_MANY_LUTS_MESSAGE };
+  return { kind: "atlas", edgeSize: s, lutCount };
 }
 
 export function detectLayout(width: number, height: number): DetectionResult {
