@@ -309,9 +309,12 @@ function repaint(): void {
   drawCanvas();
 }
 
+// Downscale the preview for responsive re-renders, but keep it sharp on screen.
+const PREVIEW_MAX_SIDE = 1280;
+
 async function loadPreview(file: File): Promise<void> {
   try {
-    state.preview = await toImageData(file, 512);
+    state.preview = await toImageData(file, PREVIEW_MAX_SIDE);
   } catch (err) {
     const why = err instanceof ImageTooLargeError ? "it's too large" : "it couldn't be read";
     showMessage(`Test image skipped — ${why}. Keeping the current preview.`, "error");

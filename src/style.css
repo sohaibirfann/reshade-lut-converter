@@ -200,7 +200,7 @@ code {
   padding: 0.1rem 0.35rem;
   border-radius: 5px;
   background: rgba(0, 0, 0, 0.65);
-  color: var(--text);
+  color: #fff;
 }
 
 .band[aria-selected="true"] {
@@ -223,7 +223,7 @@ code {
   gap: 0.6rem;
   border-radius: 14px;
   background: rgba(11, 12, 16, 0.72);
-  color: var(--text);
+  color: #fff;
   font-weight: 600;
 }
 
