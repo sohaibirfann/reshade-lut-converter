@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { detectLayout, UNKNOWN_MESSAGE, SQUARE_MESSAGE } from "../src/detect";
+import {
+  detectLayout,
+  UNKNOWN_MESSAGE,
+  SQUARE_MESSAGE,
+  TOO_FEW_SLICES_MESSAGE,
+} from "../src/detect";
 
 describe("detectLayout — strips", () => {
   it("detects a standard 256×16 strip", () => {
@@ -12,10 +17,17 @@ describe("detectLayout — strips", () => {
     expect(detectLayout(1024, 32)).toMatchObject({ kind: "strip", edgeSize: 32 });
   });
 
-  it("accepts a non-cubic strip and warns", () => {
+  it("accepts a strip with extra slices and warns", () => {
     const r = detectLayout(1024, 16);
     expect(r).toMatchObject({ kind: "strip", edgeSize: 16, sliceCount: 64 });
     expect(r.warning).toBeDefined();
+  });
+
+  it("rejects a strip with fewer slices than the cube edge", () => {
+    // 128×16: slices (8) < edge (16) — incomplete blue axis
+    const r = detectLayout(128, 16);
+    expect(r.kind).toBe("unknown");
+    expect(r.error).toBe(TOO_FEW_SLICES_MESSAGE);
   });
 });
 
