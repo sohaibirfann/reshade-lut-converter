@@ -23,7 +23,7 @@ export const TOO_MANY_LUTS_MESSAGE =
 
 const MIN_EDGE = 2;
 const MAX_EDGE = 128;
-const MAX_LUTS = 100;
+const MAX_LUTS = 256;
 
 function inRange(n: number): boolean {
   return Number.isInteger(n) && n >= MIN_EDGE && n <= MAX_EDGE;

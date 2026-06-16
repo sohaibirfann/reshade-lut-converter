@@ -37,13 +37,14 @@ describe("detectLayout — atlases", () => {
     [4096, 3200, 64, 50],
     [4096, 1984, 64, 31],
     [1089, 330, 33, 10],
+    [4096, 8000, 64, 125], // large vlogger-style pack
   ])("detects a %i×%i MultiLUT atlas", (w, h, edge, count) => {
     expect(detectLayout(w, h)).toMatchObject({ kind: "atlas", edgeSize: edge, lutCount: count });
   });
 
   it("rejects an atlas with an unrealistic number of bands", () => {
-    // 16×800: edge 4, 200 bands — would flood the contact sheet
-    const r = detectLayout(16, 800);
+    // 16×1200: edge 4, 300 bands — beyond the supported maximum
+    const r = detectLayout(16, 1200);
     expect(r.kind).toBe("unknown");
     expect(r.error).toBe(TOO_MANY_LUTS_MESSAGE);
   });
