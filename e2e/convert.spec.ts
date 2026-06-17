@@ -30,6 +30,19 @@ test("detects a HALD CLUT", async ({ page }) => {
   await expect(page.locator("#file-meta")).toContainText("HALD CLUT · 16³");
 });
 
+test("offers a zip of all bands for an atlas only", async ({ page }) => {
+  await page.setInputFiles("#lut-file", fixture("strip.png"));
+  await expect(page.locator("#download-all")).toBeHidden();
+
+  await page.setInputFiles("#lut-file", fixture("atlas.png"));
+  await expect(page.locator("#download-all")).toBeVisible();
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.locator("#download-all").click(),
+  ]);
+  expect(download.suggestedFilename()).toBe("atlas-luts.zip");
+});
+
 test("rejects an unrecognized image", async ({ page }) => {
   await page.setInputFiles("#lut-file", fixture("square.png"));
   await expect(page.locator("#message")).toBeVisible();

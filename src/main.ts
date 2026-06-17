@@ -2,7 +2,8 @@ import "./style.css";
 import { detectLayout, type DetectionResult } from "./detect";
 import { convertToCube, convertHaldToCube, toCubeFilename } from "./convert";
 import { applyStrip, applyHald, blend } from "./preview";
-import { downloadText } from "./download";
+import { downloadText, downloadBytes } from "./download";
+import { makeZip } from "./zip";
 import { ImageTooLargeError, toImageData, getSample, putOnCanvas, downscale } from "./image";
 import { initThemeToggle } from "./theme";
 
@@ -31,6 +32,7 @@ const clearPreview = el<HTMLButtonElement>("#clear-preview");
 const opacity = el<HTMLInputElement>("#opacity");
 const opacityVal = el<HTMLOutputElement>("#opacity-val");
 const downloadBtn = el<HTMLButtonElement>("#download");
+const downloadAllBtn = el<HTMLButtonElement>("#download-all");
 
 interface State {
   lut: ImageData | null;
@@ -53,6 +55,9 @@ const state: State = {
 };
 
 const PREVIEW_MAX_SIDE = 1280;
+
+// Refuse to build a zip past this (estimated) size so the tab can't OOM.
+const MAX_ZIP_BYTES = 150_000_000;
 
 function showMessage(text: string, kind: "error" | "warn"): void {
   message.textContent = text;
@@ -127,6 +132,39 @@ function downloadBand(band: number): void {
   downloadText(name, text);
 }
 
+function buildLutZip(count: number): Uint8Array {
+  const enc = new TextEncoder();
+  const entries = [];
+  for (let i = 0; i < count; i++) {
+    const { name, text } = cubeFor(i);
+    entries.push({ name, data: enc.encode(text) });
+  }
+  return makeZip(entries);
+}
+
+async function downloadAll(): Promise<void> {
+  const { layout, sourceName } = state;
+  if (!layout || layout.kind !== "atlas") return;
+
+  const estimate = layout.lutCount! * layout.edgeSize! ** 3 * 27; // ~27 bytes per entry
+  if (estimate > MAX_ZIP_BYTES) {
+    showMessage(
+      `That's ~${Math.round(estimate / 1e6)} MB of LUTs — too much to zip at once. Download bands individually instead.`,
+      "error",
+    );
+    return;
+  }
+
+  loading.hidden = false;
+  await nextFrame();
+  try {
+    const base = sourceName.replace(/\.png$/i, "");
+    downloadBytes(`${base}-luts.zip`, buildLutZip(layout.lutCount!), "application/zip");
+  } finally {
+    loading.hidden = true;
+  }
+}
+
 function selectBand(i: number): void {
   state.band = i;
   [...bands.children].forEach((card, idx) =>
@@ -188,6 +226,7 @@ function render(): void {
 
   state.band = 0;
   state.graded = applyLook(state.preview!, 0);
+  downloadAllBtn.hidden = state.layout!.kind !== "atlas";
   renderBands();
   drawCanvas();
 }
@@ -302,5 +341,7 @@ opacity.addEventListener("input", () => {
 downloadBtn.addEventListener("click", () => {
   if (state.lut) downloadBand(state.band);
 });
+
+downloadAllBtn.addEventListener("click", downloadAll);
 
 initThemeToggle(el<HTMLButtonElement>("#theme-toggle"));
