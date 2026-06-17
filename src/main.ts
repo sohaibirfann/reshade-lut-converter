@@ -142,18 +142,16 @@ function buildLutZip(count: number): Uint8Array {
   return makeZip(entries);
 }
 
+// Estimated bytes if every band were zipped (~27 bytes per cube entry).
+function zipEstimate(): number {
+  const l = state.layout;
+  if (!l || l.kind !== "atlas") return 0;
+  return l.lutCount! * l.edgeSize! ** 3 * 27;
+}
+
 async function downloadAll(): Promise<void> {
   const { layout, sourceName } = state;
-  if (!layout || layout.kind !== "atlas") return;
-
-  const estimate = layout.lutCount! * layout.edgeSize! ** 3 * 27; // ~27 bytes per entry
-  if (estimate > MAX_ZIP_BYTES) {
-    showMessage(
-      `That's ~${Math.round(estimate / 1e6)} MB of LUTs — too much to zip at once. Download bands individually instead.`,
-      "error",
-    );
-    return;
-  }
+  if (!layout || layout.kind !== "atlas" || zipEstimate() > MAX_ZIP_BYTES) return;
 
   loading.hidden = false;
   await nextFrame();
@@ -227,6 +225,11 @@ function render(): void {
   state.band = 0;
   state.graded = applyLook(state.preview!, 0);
   downloadAllBtn.hidden = state.layout!.kind !== "atlas";
+  const tooLarge = zipEstimate() > MAX_ZIP_BYTES;
+  downloadAllBtn.disabled = tooLarge;
+  downloadAllBtn.textContent = tooLarge
+    ? "Too large to zip — download bands individually"
+    : "Download all bands (.zip)";
   renderBands();
   drawCanvas();
 }

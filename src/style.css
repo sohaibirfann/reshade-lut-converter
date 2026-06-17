@@ -398,6 +398,11 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 button.accent {
   background: var(--accent);
   border-color: transparent;
