@@ -32,8 +32,6 @@ There is no backend. Decoding, conversion, and download all happen in the browse
 
 [`lut-utility`](https://github.com/Skyfish1/lut-utility) is a Rust CLI that generates, converts, and applies LUTs across ReShade and HALD formats, with batch processing and cube resizing — a broader, more capable toolkit and the right tool for power users.
 
-This app is the zero-friction counterpart: no executable, no terminal, no flags. The audience of ReShade color-graders only partly overlaps with people comfortable running a CLI, so a drag-drop-download web tool serves a real, distinct user. It's focused on the common ReShade → Photoshop path with a visual before/after check, rather than being a general LUT swiss-army knife — the deliberate omissions (cube resizing, multi-file batch) are covered by the CLI.
-
 The two tools take different paths to the same `.cube`, and on a straight native-size conversion they produce equivalent output: both transcribe each LUT pixel directly into the corresponding cube entry, so neither resamples or alters the data. Where they diverge is reach — `lut-utility` adds resizing, LUT-baking, and batch; this app adds automatic format detection (including MultiLUT atlases) and a no-install visual workflow.
 
 ## Development
