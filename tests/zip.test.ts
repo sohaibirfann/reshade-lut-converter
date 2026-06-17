@@ -35,6 +35,19 @@ describe("makeZip", () => {
     expect(dec.decode(zip).includes("x.cube")).toBe(true);
   });
 
+  it("points the EOCD at a correctly-sized central directory", () => {
+    const zip = makeZip([
+      { name: "a.cube", data: enc.encode("aaa") },
+      { name: "b.cube", data: enc.encode("bb") },
+    ]);
+    const eocd = zip.length - 22;
+    const view = new DataView(zip.buffer);
+    const centralSize = view.getUint32(eocd + 12, true);
+    const centralOffset = view.getUint32(eocd + 16, true);
+    expect(u32(zip, centralOffset)).toBe(0x02014b50); // central dir starts here
+    expect(centralOffset + centralSize).toBe(eocd); // and runs right up to the EOCD
+  });
+
   it("computes a correct CRC-32", () => {
     // CRC-32 of "hello" is 0x3610a686.
     const zip = makeZip([{ name: "f", data: enc.encode("hello") }]);

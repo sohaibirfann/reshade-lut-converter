@@ -22,72 +22,86 @@ function crc32(data: Uint8Array): number {
   return (c ^ 0xffffffff) >>> 0;
 }
 
+// Sequential writer that advances its own offset, so no manual byte math.
+function makeWriter(view: DataView, buf: Uint8Array) {
+  let p = 0;
+  return {
+    u16: (v: number) => void view.setUint16((p += 2) - 2, v, true),
+    u32: (v: number) => void view.setUint32((p += 4) - 4, v, true),
+    bytes: (b: Uint8Array) => {
+      buf.set(b, p);
+      p += b.length;
+    },
+    pos: () => p,
+  };
+}
+
+const LOCAL_HEADER = 30; // bytes before the name
+const CENTRAL_HEADER = 46;
+const EOCD = 22;
+
 export function makeZip(entries: ZipEntry[]): Uint8Array {
   const enc = new TextEncoder();
   const files = entries.map((e) => ({ name: enc.encode(e.name), data: e.data, crc: crc32(e.data) }));
 
-  const LOCAL = 30; // local header size before name
-  const CENTRAL = 46; // central header size before name
-  let size = 22; // end-of-central-directory record
+  let size = EOCD;
   for (const f of files) {
-    size += LOCAL + f.name.length + f.data.length;
-    size += CENTRAL + f.name.length;
+    size += LOCAL_HEADER + f.name.length + f.data.length;
+    size += CENTRAL_HEADER + f.name.length;
   }
 
   const buf = new Uint8Array(size);
-  const view = new DataView(buf.buffer);
-  let offset = 0;
-  const central: { offset: number; f: (typeof files)[number] }[] = [];
+  const w = makeWriter(new DataView(buf.buffer), buf);
+  const localOffsets: number[] = [];
 
   for (const f of files) {
-    central.push({ offset, f });
-    view.setUint32(offset, 0x04034b50, true); // local file header signature
-    view.setUint16(offset + 4, 20, true); // version needed
-    view.setUint16(offset + 6, 0, true); // flags
-    view.setUint16(offset + 8, 0, true); // method: store
-    view.setUint16(offset + 10, 0, true); // mod time
-    view.setUint16(offset + 12, 0, true); // mod date
-    view.setUint32(offset + 14, f.crc, true);
-    view.setUint32(offset + 18, f.data.length, true); // compressed size
-    view.setUint32(offset + 22, f.data.length, true); // uncompressed size
-    view.setUint16(offset + 26, f.name.length, true);
-    view.setUint16(offset + 28, 0, true); // extra length
-    buf.set(f.name, offset + LOCAL);
-    buf.set(f.data, offset + LOCAL + f.name.length);
-    offset += LOCAL + f.name.length + f.data.length;
+    localOffsets.push(w.pos());
+    w.u32(0x04034b50); // local file header signature
+    w.u16(20); // version needed
+    w.u16(0); // flags
+    w.u16(0); // method: store
+    w.u16(0); // mod time
+    w.u16(0); // mod date
+    w.u32(f.crc);
+    w.u32(f.data.length); // compressed size
+    w.u32(f.data.length); // uncompressed size
+    w.u16(f.name.length);
+    w.u16(0); // extra length
+    w.bytes(f.name);
+    w.bytes(f.data);
   }
 
-  const centralStart = offset;
-  for (const { offset: localOffset, f } of central) {
-    view.setUint32(offset, 0x02014b50, true); // central directory signature
-    view.setUint16(offset + 4, 20, true); // version made by
-    view.setUint16(offset + 6, 20, true); // version needed
-    view.setUint16(offset + 8, 0, true); // flags
-    view.setUint16(offset + 10, 0, true); // method
-    view.setUint16(offset + 12, 0, true); // mod time
-    view.setUint16(offset + 14, 0, true); // mod date
-    view.setUint32(offset + 16, f.crc, true);
-    view.setUint32(offset + 20, f.data.length, true);
-    view.setUint32(offset + 24, f.data.length, true);
-    view.setUint16(offset + 28, f.name.length, true);
-    view.setUint16(offset + 30, 0, true); // extra length
-    view.setUint16(offset + 32, 0, true); // comment length
-    view.setUint16(offset + 34, 0, true); // disk number start
-    view.setUint16(offset + 36, 0, true); // internal attrs
-    view.setUint32(offset + 38, 0, true); // external attrs
-    view.setUint32(offset + 42, localOffset, true);
-    buf.set(f.name, offset + CENTRAL);
-    offset += CENTRAL + f.name.length;
-  }
+  const centralStart = w.pos();
+  files.forEach((f, i) => {
+    w.u32(0x02014b50); // central directory signature
+    w.u16(20); // version made by
+    w.u16(20); // version needed
+    w.u16(0); // flags
+    w.u16(0); // method
+    w.u16(0); // mod time
+    w.u16(0); // mod date
+    w.u32(f.crc);
+    w.u32(f.data.length);
+    w.u32(f.data.length);
+    w.u16(f.name.length);
+    w.u16(0); // extra length
+    w.u16(0); // comment length
+    w.u16(0); // disk number start
+    w.u16(0); // internal attrs
+    w.u32(0); // external attrs
+    w.u32(localOffsets[i]);
+    w.bytes(f.name);
+  });
 
-  view.setUint32(offset, 0x06054b50, true); // end of central directory signature
-  view.setUint16(offset + 4, 0, true); // disk number
-  view.setUint16(offset + 6, 0, true); // central dir start disk
-  view.setUint16(offset + 8, files.length, true); // entries this disk
-  view.setUint16(offset + 10, files.length, true); // total entries
-  view.setUint32(offset + 12, offset - centralStart, true); // central dir size
-  view.setUint32(offset + 16, centralStart, true); // central dir offset
-  view.setUint16(offset + 20, 0, true); // comment length
+  const centralSize = w.pos() - centralStart;
+  w.u32(0x06054b50); // end of central directory signature
+  w.u16(0); // disk number
+  w.u16(0); // central dir start disk
+  w.u16(files.length); // entries this disk
+  w.u16(files.length); // total entries
+  w.u32(centralSize); // central dir size
+  w.u32(centralStart); // central dir offset
+  w.u16(0); // comment length
 
   return buf;
 }
